@@ -1,0 +1,49 @@
+# Levanta todo con un comando:  docker compose up --build
+# - db:  PostgreSQL 13
+# - app: backend MotoTaxi (aplica migraciones al arrancar)
+services:
+  db:
+    image: postgres:13-alpine
+    container_name: mototaxi-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-mototaxi}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mototaxi}
+      POSTGRES_DB: ${POSTGRES_DB:-mototaxi}
+    ports:
+      - "5432:5432"
+    volumes:
+      - mototaxi_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mototaxi} -d ${POSTGRES_DB:-mototaxi}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    container_name: mototaxi-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PORT: 3001
+      # Nota: el host de la BD es "db" (nombre del servicio), no localhost.
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-mototaxi}:${POSTGRES_PASSWORD:-mototaxi}@db:5432/${POSTGRES_DB:-mototaxi}?schema=public"
+      WHATSAPP_CHATBOT_PROVIDER: ${WHATSAPP_CHATBOT_PROVIDER:-greenapi}
+      GREENAPI_API_URL: ${GREENAPI_API_URL:-https://api.green-api.com}
+      GREENAPI_INSTANCE_ID: ${GREENAPI_INSTANCE_ID:-}
+      GREENAPI_API_TOKEN: ${GREENAPI_API_TOKEN:-}
+      GREENAPI_GROUP_CHAT_ID: ${GREENAPI_GROUP_CHAT_ID:-}
+      YCLOUD_API_URL: ${YCLOUD_API_URL:-https://api.ycloud.com/v2}
+      YCLOUD_API_KEY: ${YCLOUD_API_KEY:-}
+      YCLOUD_WHATSAPP_ACCOUNT_ID: ${YCLOUD_WHATSAPP_ACCOUNT_ID:-}
+      YCLOUD_WHATSAPP_FROM: ${YCLOUD_WHATSAPP_FROM:-}
+      YCLOUD_WEBHOOK_SECRET: ${YCLOUD_WEBHOOK_SECRET:-}
+      GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY:-}
+    ports:
+      - "3001:3001"
+
+volumes:
+  mototaxi_pgdata:

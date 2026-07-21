@@ -1,0 +1,112 @@
+// ==========================================================================
+//  Prisma schema - Sistema MotoTaxi (PostgreSQL 13+)
+//  Modelo unificado: pedidos + viajesAceptados se fusionan en "Pedido"
+//  con la columna "estado" (pendiente | aceptado | finalizado | cancelado).
+// ==========================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum EstadoConversacion {
+  ninguna              // sin conversacion activa (equivale a null en Firestore)
+  esperando_ubicacion  // se le pidio la ubicacion al cliente
+}
+
+enum EstadoPedido {
+  pendiente
+  aceptado
+  finalizado
+  cancelado
+}
+
+enum EstadoConductor {
+  disponible
+  ocupado
+  inactivo
+}
+
+// ---- CLIENTES -----------------------------------------------------------
+model Cliente {
+  telefono     String              @id                         // ID = telefono sin @c.us
+  nombre       String?
+  conversacion EstadoConversacion  @default(ninguna)
+  creadoEn     DateTime            @default(now())
+  actualizado  DateTime            @updatedAt
+
+  direcciones  ClienteDireccion[]
+  pedidos      Pedido[]
+
+  @@map("clientes")
+}
+
+// ---- DIRECCIONES DEL CLIENTE (array embebido -> tabla hija) -------------
+model ClienteDireccion {
+  id              Int      @id @default(autoincrement())
+  clienteTelefono String
+  direccion       String
+  lat             Float?
+  lng             Float?
+  mapsUrl         String?
+  orden           Int      @default(0)   // 0 = mas reciente (menor = mas nuevo)
+  creadoEn        DateTime @default(now())
+
+  cliente Cliente @relation(fields: [clienteTelefono], references: [telefono], onDelete: Cascade)
+
+  @@index([clienteTelefono, orden])
+  @@map("cliente_direcciones")
+}
+
+// ---- CONDUCTORES (esquema unificado) -----------------------------------
+model Conductor {
+  phoneFull String          @id                  // ID = telefono completo
+  fullName  String
+  plate     String?
+  unit      String?
+  estado    EstadoConductor @default(disponible)
+  creadoEn  DateTime        @default(now())
+  actualizado DateTime      @updatedAt
+
+  pedidos Pedido[]
+
+  @@map("conductores")
+}
+
+// ---- PEDIDOS (unifica pedidos + viajesAceptados) -----------------------
+model Pedido {
+  id                    String       @id @default(uuid())
+  pedidoCode            String       @unique                 // 6 chars MAYUS
+  clienteTelefono       String
+  clienteNombre         String?
+
+  // Ubicacion (aplanada)
+  ubicDescripcion       String?
+  ubicDireccionCompleta String?
+  ubicLat               Float?
+  ubicLng               Float?
+  ubicMapsUrl           String?
+
+  estado                EstadoPedido @default(pendiente)
+
+  // Asignacion
+  conductorId           String?                              // FK -> Conductor.phoneFull
+  conductorData         Json?                                // { fullName, phoneFull, plate, unit }
+  minutosEta            Int?
+
+  waGroupMsgId          String?
+
+  creadoEn              DateTime     @default(now())
+  aceptadoEn            DateTime?
+
+  cliente   Cliente    @relation(fields: [clienteTelefono], references: [telefono])
+  conductor Conductor? @relation(fields: [conductorId], references: [phoneFull])
+
+  @@index([estado])
+  @@index([clienteTelefono, estado])
+  @@map("pedidos")
+}

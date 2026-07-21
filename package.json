@@ -1,0 +1,31 @@
+{
+  "name": "server-mototaxi",
+  "version": "1.0.0",
+  "description": "Backend de despacho de mototaxis por WhatsApp (PostgreSQL + Prisma + Green API/YCloud)",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js",
+    "test": "node --test test/",
+    "go": "node scripts/start.js",
+    "tunnel": "node scripts/setup-tunnel.js",
+    "get-group-id": "node scripts/get-group-id.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev --name init",
+    "prisma:deploy": "prisma migrate deploy",
+    "prisma:studio": "prisma studio"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "axios": "^1.7.9",
+    "dotenv": "^16.4.7",
+    "express": "^5.0.1"
+  },
+  "devDependencies": {
+    "prisma": "^5.22.0"
+  }
+}
