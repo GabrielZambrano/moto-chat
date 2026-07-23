@@ -23,6 +23,7 @@ enum EstadoPedido {
   aceptado
   finalizado
   cancelado
+  no_atendido   // expiro sin que ningun conductor lo aceptara
 }
 
 enum EstadoConductor {
@@ -68,6 +69,8 @@ model Conductor {
   fullName  String
   plate     String?
   unit      String?
+  lid       String?  @unique                     // WhatsApp Linked ID (identificador anonimo del grupo)
+  fotoUrl   String?                              // ruta publica de la foto (se envia al cliente al aceptar)
   estado    EstadoConductor @default(disponible)
   creadoEn  DateTime        @default(now())
   actualizado DateTime      @updatedAt
@@ -75,6 +78,17 @@ model Conductor {
   pedidos Pedido[]
 
   @@map("conductores")
+}
+
+// ---- SECTORES (poligonos geograficos) ----------------------------------
+model Sector {
+  id           String   @id @default(uuid())
+  nombreSector String
+  coordenadas  Json                                    // [{ lat, lng }, ...] (min 3 puntos)
+  creadoEn     DateTime @default(now())
+  actualizado  DateTime @updatedAt
+
+  @@map("sectores")
 }
 
 // ---- PEDIDOS (unifica pedidos + viajesAceptados) -----------------------
@@ -90,6 +104,7 @@ model Pedido {
   ubicLat               Float?
   ubicLng               Float?
   ubicMapsUrl           String?
+  sector                String?                              // nombre del sector/poligono donde cae la ubicacion
 
   estado                EstadoPedido @default(pendiente)
 
@@ -97,6 +112,9 @@ model Pedido {
   conductorId           String?                              // FK -> Conductor.phoneFull
   conductorData         Json?                                // { fullName, phoneFull, plate, unit }
   minutosEta            Int?
+
+  recordatoriosEnviados Int          @default(0)             // cuantos avisos "seguimos buscando" se enviaron
+  republicadoEnGrupo    Boolean      @default(false)         // si ya se reenviaron los botones al grupo
 
   waGroupMsgId          String?
 

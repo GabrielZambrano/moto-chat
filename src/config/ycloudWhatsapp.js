@@ -40,4 +40,43 @@ async function sendImage(to, link, caption = '') {
   return data;
 }
 
-module.exports = { sendText, sendImage, toNumber };
+// Mensaje interactivo con botones de respuesta (max 3). Opcionalmente con imagen de cabecera.
+// buttons: [{ id, title }] (title max 20 chars).
+async function sendButtons(to, { bodyText, headerImageUrl, buttons }) {
+  const interactive = {
+    type: 'button',
+    body: { text: bodyText },
+    action: {
+      buttons: buttons.slice(0, 3).map((b) => ({ type: 'reply', reply: { id: b.id, title: b.title } })),
+    },
+  };
+  if (headerImageUrl) interactive.header = { type: 'image', image: { link: headerImageUrl } };
+  const { data } = await axios.post(`${API_URL}/whatsapp/messages`, {
+    from: toNumber(FROM),
+    to: toNumber(to),
+    messagingProduct: 'whatsapp',
+    type: 'interactive',
+    interactive,
+  }, { headers: headers() });
+  return data;
+}
+
+// Mensaje interactivo nativo de WhatsApp: muestra el boton "Enviar ubicacion".
+// Al pulsarlo, el cliente comparte sus coordenadas (llega como mensaje type=location).
+async function sendLocationRequest(to, text) {
+  const url = `${API_URL}/whatsapp/messages`;
+  const { data } = await axios.post(url, {
+    from: toNumber(FROM),
+    to: toNumber(to),
+    messagingProduct: 'whatsapp',
+    type: 'interactive',
+    interactive: {
+      type: 'location_request_message',
+      body: { text },
+      action: { name: 'send_location' },
+    },
+  }, { headers: headers() });
+  return data;
+}
+
+module.exports = { sendText, sendImage, sendButtons, sendLocationRequest, toNumber };

@@ -23,6 +23,7 @@ async function crear({ clienteTelefono, clienteNombre, ubicacion, waGroupMsgId }
       ubicLat: ubicacion?.lat ?? null,
       ubicLng: ubicacion?.lng ?? null,
       ubicMapsUrl: ubicacion?.mapsUrl || null,
+      sector: ubicacion?.sector || null,
       estado: 'pendiente',
       waGroupMsgId: waGroupMsgId || null,
     },
@@ -69,6 +70,58 @@ async function aceptar({ pedidoCode, conductor, minutosEta }) {
   return prisma.pedido.findFirst({ where: { pedidoCode } });
 }
 
+// Cancela un pedido por id (marca estado=cancelado).
+async function cancelar(id) {
+  return prisma.pedido.update({ where: { id }, data: { estado: 'cancelado' } });
+}
+
+async function buscarPorCode(pedidoCode) {
+  return prisma.pedido.findFirst({ where: { pedidoCode } });
+}
+
+// Finaliza un pedido SOLO si estaba aceptado (atomico). Devuelve el pedido o null.
+async function finalizar(pedidoCode) {
+  const r = await prisma.pedido.updateMany({
+    where: { pedidoCode, estado: 'aceptado' },
+    data: { estado: 'finalizado' },
+  });
+  if (r.count === 0) return null;
+  return prisma.pedido.findFirst({ where: { pedidoCode } });
+}
+
+// Todos los pedidos aun pendientes (para el barredor de espera).
+async function listarPendientes() {
+  return prisma.pedido.findMany({ where: { estado: 'pendiente' }, orderBy: { creadoEn: 'asc' } });
+}
+
+// Marca un pedido como "no atendido" SOLO si sigue pendiente (evita pisar una aceptacion).
+// Devuelve true si lo marco, false si ya no estaba pendiente.
+async function marcarNoAtendido(id) {
+  const r = await prisma.pedido.updateMany({
+    where: { id, estado: 'pendiente' },
+    data: { estado: 'no_atendido' },
+  });
+  return r.count > 0;
+}
+
+// Incrementa el contador de recordatorios SOLO si sigue pendiente.
+async function incrementarRecordatorio(id) {
+  const r = await prisma.pedido.updateMany({
+    where: { id, estado: 'pendiente' },
+    data: { recordatoriosEnviados: { increment: 1 } },
+  });
+  return r.count > 0;
+}
+
+// Marca que ya se reenviaron los botones al grupo (SOLO si sigue pendiente y no se habia hecho).
+async function marcarRepublicado(id) {
+  const r = await prisma.pedido.updateMany({
+    where: { id, estado: 'pendiente', republicadoEnGrupo: false },
+    data: { republicadoEnGrupo: true },
+  });
+  return r.count > 0;
+}
+
 async function listar({ estado, limit = 50 } = {}) {
   return prisma.pedido.findMany({
     where: estado ? { estado } : undefined,
@@ -79,5 +132,7 @@ async function listar({ estado, limit = 50 } = {}) {
 
 module.exports = {
   crear, setWaGroupMsgId, buscarPendientePorCode, pedidoActivoDeCliente,
-  aceptar, listar, derivarCode,
+  aceptar, cancelar, listar, derivarCode,
+  listarPendientes, marcarNoAtendido, incrementarRecordatorio, marcarRepublicado,
+  buscarPorCode, finalizar,
 };

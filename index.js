@@ -4,6 +4,7 @@ require('dotenv').config();
 
 const { createApp } = require('./src/app');
 const { prisma } = require('./src/config/prisma');
+const expiracionService = require('./src/services/expiracionService');
 
 const PORT = process.env.PORT || 3001;
 
@@ -22,6 +23,8 @@ async function main() {
     console.log(`[server] MotoTaxi escuchando en puerto ${PORT}`);
     console.log(`[server] Webhook Green API: POST /webhook`);
     console.log(`[server] Webhook YCloud:    POST /webhook/ycloud`);
+    // Barredor de pedidos en espera (recordatorios + expiracion "no atendido").
+    expiracionService.iniciar();
   });
 
   const cerrar = async () => {

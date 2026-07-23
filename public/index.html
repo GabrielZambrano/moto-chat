@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#15171C" />
+  <title>Central MotoTaxi — Despacho</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+  <link rel="stylesheet" href="/admin/assets/styles.css?v=9" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%9B%B5%3C/text%3E%3C/svg%3E" />
+</head>
+<body>
+
+  <!-- ===================== LOGIN ===================== -->
+  <div id="login" class="login-wrap">
+    <div class="login-grid">
+      <div class="login-brand">
+        <div class="brand-mark">🛵</div>
+        <h1 class="brand-title">Central<br><span>MotoTaxi</span></h1>
+        <p class="brand-sub">Panel de despacho. Gestiona unidades, conductores y viajes en un solo lugar.</p>
+        <div class="brand-plate">
+          <span class="plate-label">Unidad</span>
+          <span class="plate-num">560</span>
+        </div>
+      </div>
+      <form id="login-form" class="login-card" autocomplete="off">
+        <h2>Iniciar sesión</h2>
+        <p class="muted">Acceso solo para operadores.</p>
+        <label>Usuario
+          <input name="usuario" type="text" required placeholder="admin" autocomplete="username" />
+        </label>
+        <label>Contraseña
+          <input name="password" type="password" required placeholder="••••••••" autocomplete="current-password" />
+        </label>
+        <button type="submit" class="btn btn-primary btn-block">Entrar al despacho</button>
+        <p id="login-error" class="form-error" hidden></p>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===================== APP ===================== -->
+  <div id="app" hidden>
+    <aside class="sidebar">
+      <div class="sidebar-brand"><span class="dot">🛵</span> Central</div>
+      <nav class="nav">
+        <a href="#dashboard" class="nav-link" data-view="dashboard"><span>◧</span> Panel</a>
+        <a href="#conductores" class="nav-link" data-view="conductores"><span>◉</span> Conductores</a>
+        <a href="#viajes" class="nav-link" data-view="viajes"><span>➤</span> Viajes</a>
+        <a href="#sectores" class="nav-link" data-view="sectores"><span>▩</span> Sectores</a>
+      </nav>
+      <div class="sidebar-foot">
+        <div class="who"><span id="who-user">admin</span><small>operador</small></div>
+        <button id="logout" class="btn btn-ghost btn-sm">Salir</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button id="toggle-nav" class="btn btn-ghost btn-sm" title="Mostrar/ocultar menú">☰</button>
+          <div>
+            <p class="eyebrow" id="view-eyebrow">Despacho en vivo</p>
+            <h2 id="view-title">Panel</h2>
+          </div>
+        </div>
+        <button id="refresh" class="btn btn-ghost btn-sm" title="Actualizar">⟳ Actualizar</button>
+      </header>
+
+      <!-- DASHBOARD -->
+      <section id="view-dashboard" class="view">
+        <div class="kpi-row" id="kpi-row"></div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-head"><h3>Viajes · últimos 7 días</h3></div>
+            <div id="chart-serie" class="chart"></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>Estado de pedidos</h3></div>
+            <div id="chart-estados" class="donut-wrap"></div>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-head"><h3>Top conductores</h3></div>
+            <div id="top-conductores" class="rank"></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>Actividad reciente</h3></div>
+            <div id="recientes" class="feed"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CONDUCTORES -->
+      <section id="view-conductores" class="view" hidden>
+        <div class="toolbar">
+          <div class="filters" id="cond-filtros">
+            <button class="chip is-active" data-estado="">Todos</button>
+            <button class="chip" data-estado="disponible">Disponibles</button>
+            <button class="chip" data-estado="ocupado">Ocupados</button>
+            <button class="chip" data-estado="inactivo">Inactivos</button>
+          </div>
+          <button id="btn-nuevo" class="btn btn-primary">+ Nuevo conductor</button>
+        </div>
+        <div id="cond-grid" class="cond-grid"></div>
+      </section>
+
+      <!-- VIAJES -->
+      <section id="view-viajes" class="view" hidden>
+        <div class="toolbar">
+          <div class="filters" id="viaje-filtros">
+            <button class="chip is-active" data-estado="">Todos</button>
+            <button class="chip" data-estado="pendiente">Pendientes</button>
+            <button class="chip" data-estado="aceptado">Aceptados</button>
+            <button class="chip" data-estado="finalizado">Finalizados</button>
+            <button class="chip" data-estado="cancelado">Cancelados</button>
+            <button class="chip" data-estado="no_atendido">No atendidos</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="table" id="viajes-table">
+            <thead><tr>
+              <th>Código</th><th>Cliente</th><th>Dirección</th><th>Conductor</th><th>ETA</th><th>Estado</th><th>Creado</th>
+            </tr></thead>
+            <tbody id="viajes-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- SECTORES -->
+      <section id="view-sectores" class="view" hidden>
+        <div class="sectores-layout">
+          <div id="mapa" class="mapa"></div>
+          <aside class="sectores-side">
+            <input id="sector-buscar" class="sector-buscar" placeholder="Buscar sector…" />
+            <div id="sector-lista" class="sector-lista"></div>
+          </aside>
+        </div>
+        <p class="sectores-ayuda">Dibuja una zona con la herramienta de polígono ▰ (arriba a la izquierda del mapa). Clic en un sector para renombrarlo · clic derecho para eliminarlo.</p>
+      </section>
+    </main>
+  </div>
+
+  <!-- ===================== MODAL CONDUCTOR ===================== -->
+  <div id="modal" class="modal" hidden>
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3 id="modal-title">Nuevo conductor</h3>
+        <button class="icon-btn" data-close>✕</button>
+      </div>
+      <form id="cond-form" class="cond-form">
+        <input type="hidden" name="_editId" />
+        <div class="foto-field">
+          <div class="foto-preview" id="foto-preview"><span>Sin foto</span></div>
+          <label class="btn btn-ghost btn-sm">
+            Subir foto de la moto/conductor
+            <input type="file" name="foto" accept="image/*" hidden id="foto-input" />
+          </label>
+        </div>
+        <div class="form-row">
+          <label>Teléfono (WhatsApp)
+            <input name="phoneFull" inputmode="tel" placeholder="593987654321" required />
+          </label>
+          <label>N° de unidad
+            <input name="unit" inputmode="numeric" placeholder="560" />
+          </label>
+        </div>
+        <label>Nombre del conductor
+          <input name="fullName" placeholder="Ej. Gabriel Zambrano" required />
+        </label>
+        <div class="form-row">
+          <label>Placa / matrícula
+            <input name="plate" placeholder="ABC-1234" />
+          </label>
+          <label>Estado
+            <select name="estado">
+              <option value="disponible">Disponible</option>
+              <option value="ocupado">Ocupado</option>
+              <option value="inactivo">Inactivo</option>
+            </select>
+          </label>
+        </div>
+        <div class="modal-grupo" id="modal-grupo" hidden>
+          <span class="grupo-label">Grupo de WhatsApp</span>
+          <div class="grupo-btns">
+            <button type="button" class="btn btn-ghost btn-sm" data-modal-grupo-add>➕ Agregar al grupo</button>
+            <button type="button" class="btn btn-ghost btn-sm" data-modal-grupo-del>➖ Quitar del grupo</button>
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm grupo-link" data-modal-grupo-link>🔗 Copiar enlace de invitación</button>
+        </div>
+        <p id="cond-error" class="form-error" hidden></p>
+        <div class="modal-foot">
+          <button type="button" class="btn btn-ghost" data-close>Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="cond-save">Guardar conductor</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+  <script src="/admin/assets/app.js?v=9"></script>
+</body>
+</html>
